@@ -677,6 +677,12 @@ These questions are designed for deeper thinking, troubleshooting, and extending
 - Functional analysis should be run after DE results and gene IDs are understood.
 - Exported tables and plots make the analysis easier to share and reproduce.
 
+## 21. Additional Resources
+
+- [VISTA Bioconductor package page](https://www.bioconductor.org/packages//release/bioc/html/VISTA.html)
+- [VISTA pkgdown documentation](https://cparsania.github.io/VISTA/)
+- [VISTA GitHub repository](https://github.com/cparsania/VISTA/)
+
 ## Session Information
 
 ```{r session-info}
