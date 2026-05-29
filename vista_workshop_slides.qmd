@@ -1,0 +1,348 @@
+---
+title: "VISTA Workshop"
+subtitle: "Beginner-friendly RNA-seq analysis from counts to functional interpretation"
+author: "VISTA workshop"
+format:
+  pptx:
+    slide-level: 2
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## Workshop Goals
+
+- Understand what RNA-seq count data and sample metadata represent.
+- Learn why `SummarizedExperiment` is a useful structure for genomics.
+- Use VISTA to run a complete RNA-seq workflow with example data.
+- Move from data loading to differential expression, visualization, and functional analysis.
+- Leave with a practical template that can be adapted to new datasets.
+
+## Audience Assumptions
+
+- You are new to R or still building confidence with R.
+- You have heard of RNA-seq, but may not know the full analysis workflow.
+- You want practical steps, not only theory.
+- You want plots and result tables that are easy to explain.
+
+## The Problem VISTA Addresses
+
+RNA-seq analysis often asks a simple biological question:
+
+> Which genes change between two conditions?
+
+The practical workflow is less simple:
+
+- Count tables and metadata must match exactly.
+- Statistical packages use different object types and result formats.
+- Gene identifiers need annotation.
+- Plots require repeated data wrangling.
+- Functional enrichment needs careful gene ID handling.
+- Reproducibility is easy to lose across scripts and files.
+
+## Common Beginner Pain Points
+
+- "My sample names do not match."
+- "I do not know which column is the condition."
+- "DESeq2, edgeR, and limma return different-looking objects."
+- "My gene IDs are Ensembl IDs, but the plot needs symbols."
+- "I made one volcano plot, but now I need ten other plots."
+- "I ran enrichment, but I am not sure which genes went into it."
+
+## How VISTA Helps
+
+VISTA provides one coordinated workflow:
+
+- Standardize counts and metadata.
+- Create a single VISTA object.
+- Run differential expression through supported backends.
+- Store normalized expression, metadata, annotations, DE results, and cutoffs together.
+- Generate publication-ready plots with consistent function names.
+- Run enrichment directly from VISTA comparisons.
+- Export tables, plots, and reports.
+
+## From Files to Interpretation
+
+Typical RNA-seq workflow:
+
+1. Load counts and sample metadata.
+2. Check that samples match.
+3. Define the comparison.
+4. Run differential expression.
+5. Inspect QC plots.
+6. Visualize differential expression.
+7. Annotate and select genes.
+8. Run functional analysis.
+9. Export results and plots.
+
+VISTA keeps these steps connected.
+
+## Why Data Structure Matters
+
+RNA-seq data are not just one table.
+
+You usually need:
+
+- Gene-by-sample count matrix.
+- Sample metadata such as treatment, cell line, batch, or patient.
+- Gene metadata such as symbol, description, chromosome, or Entrez ID.
+- Analysis results such as log2 fold change and adjusted p-value.
+- Analysis settings such as cutoffs and method.
+
+If these pieces drift apart, mistakes become hard to detect.
+
+## Why `SummarizedExperiment` Matters
+
+`SummarizedExperiment` is a Bioconductor container for assay data.
+
+It keeps related pieces together:
+
+- `assays`: expression matrices such as counts or normalized counts.
+- `colData`: sample metadata, one row per sample.
+- `rowData`: gene metadata, one row per gene.
+- `metadata`: analysis-level information.
+
+This structure makes it harder to accidentally compare the wrong samples or annotate the wrong genes.
+
+## VISTA and `SummarizedExperiment`
+
+VISTA builds on the same idea:
+
+- A VISTA object behaves like a structured genomics object.
+- Counts, metadata, annotations, DE results, and plotting settings stay together.
+- Accessor functions retrieve key pieces without manual file juggling.
+- Validation checks help catch common object problems.
+
+This is especially useful in teaching because beginners can focus on the biology and workflow logic.
+
+## Why VISTA When AI Is Advanced?
+
+AI can help write code, explain errors, and summarize results.
+
+But RNA-seq still needs:
+
+- Correct statistical models.
+- Valid sample-to-count matching.
+- Reproducible analysis objects.
+- Transparent thresholds and assumptions.
+- Standardized outputs that can be checked.
+- Domain-specific plotting and enrichment logic.
+
+VISTA gives AI and humans a reliable workflow to operate on.
+
+## AI Is Not a Substitute for Analysis Structure
+
+AI can suggest a command, but it cannot guarantee:
+
+- Your sample labels match your count columns.
+- Your model formula matches the experiment.
+- Your gene IDs are mapped correctly.
+- Your adjusted p-values are interpreted correctly.
+- Your plot uses the intended comparison.
+
+VISTA reduces these risks by enforcing a consistent analysis object and workflow.
+
+## Example Dataset
+
+This workshop uses example data included with VISTA:
+
+- `count_data`: RNA-seq count table.
+- `sample_metadata`: sample information.
+- Biological setting: airway smooth muscle cells with treatment information.
+- Comparison used in the practical: treated vs untreated.
+
+Because the data ship with VISTA, everyone can run the same workflow.
+
+## Practical Workflow
+
+In the hands-on session we will:
+
+1. Load packages and example data.
+2. Inspect count data and metadata.
+3. Prepare and match VISTA inputs.
+4. Create and validate a VISTA object.
+5. Add gene annotations.
+6. Explore DE results.
+7. Make QC and DE plots.
+8. Select genes for expression plots.
+9. Run functional enrichment.
+10. Export results.
+
+## VISTA Function Map
+
+Input preparation:
+
+- `read_vista_counts()`
+- `read_vista_metadata()`
+- `match_vista_inputs()`
+- `derive_vista_metadata()`
+
+Object creation and validation:
+
+- `create_vista()`
+- `as_vista()`
+- `validate_vista()`
+- `validate_vista_deep()`
+
+Annotation and access:
+
+- `set_rowdata()`
+- `set_de_source()`
+- `get_expression_matrix()`
+- `get_genes_by_regulation()`
+
+## VISTA Function Map
+
+QC and sample structure:
+
+- `get_corr_heatmap()`
+- `get_pairwise_corr_plot()`
+- `get_pca_plot()`
+- `get_mds_plot()`
+- `get_umap_plot()`
+
+Differential expression plots:
+
+- `get_deg_count_barplot()`
+- `get_deg_count_pieplot()`
+- `get_deg_count_donutplot()`
+- `get_deg_alluvial()`
+- `get_deg_venn_diagram()`
+- `get_volcano_plot()`
+- `get_ma_plot()`
+
+## VISTA Function Map
+
+Expression visualization:
+
+- `get_expression_heatmap()`
+- `get_expression_barplot()`
+- `get_expression_boxplot()`
+- `get_expression_violinplot()`
+- `get_expression_density()`
+- `get_expression_scatter()`
+- `get_expression_lineplot()`
+- `get_expression_lollipop()`
+- `get_expression_joyplot()`
+- `get_expression_raincloud()`
+- `get_expression_chromosome_plot()`
+
+## VISTA Function Map
+
+Fold-change visualization:
+
+- `get_foldchange_matrix()`
+- `get_foldchange_heatmap()`
+- `get_foldchange_barplot()`
+- `get_foldchange_boxplot()`
+- `get_foldchange_lineplot()`
+- `get_foldchange_lollipop()`
+- `get_foldchange_scatter()`
+- `get_foldchange_raincloud()`
+- `get_foldchange_chromosome_plot()`
+
+Functional analysis:
+
+- `get_msigdb_enrichment()`
+- `get_go_enrichment()`
+- `get_kegg_enrichment()`
+- `get_gsea()`
+- `get_enrichment_plot()`
+- `get_enrichment_chord()`
+- `get_pathway_genes()`
+- `get_pathway_heatmap()`
+
+## VISTA Function Map
+
+Cell composition:
+
+- `run_cell_deconvolution()`
+- `get_cell_fractions()`
+- `get_celltype_barplot()`
+- `get_celltype_heatmap()`
+- `get_celltype_group_dotplot()`
+
+Export and reporting:
+
+- `save_vista_data()`
+- `save_vista_plot()`
+- `export_vista_assets()`
+- `run_vista_report()`
+
+Benchmarking:
+
+- `benchmark_vista_equivalence()`
+
+## What Is Differential Expression?
+
+Differential expression asks whether a gene has different expression between groups.
+
+Important columns:
+
+- `gene_id`: gene identifier.
+- `log2FoldChange`: size and direction of change.
+- `pvalue`: evidence against no change.
+- `padj`: adjusted p-value controlling false discovery rate.
+- `regulation`: VISTA label such as Up, Down, or Other.
+
+Beginners should interpret effect size and adjusted p-value together.
+
+## Why Functional Analysis Comes Later
+
+Functional analysis should not be the first step.
+
+Before enrichment, we need to know:
+
+- Which comparison was tested.
+- Which genes are up or down.
+- Which cutoffs define significant genes.
+- Which gene ID type is being used.
+- Whether annotations are available.
+
+VISTA helps pass the right gene sets from DE results into enrichment functions.
+
+## Functional Analysis in VISTA
+
+VISTA supports:
+
+- Over-representation analysis for MSigDB, GO, and KEGG.
+- GSEA using ranked differential expression results.
+- Dot plots and pathway-focused heatmaps.
+- Extraction of pathway genes for follow-up plots.
+
+This connects statistical results to biological interpretation.
+
+## Practical Teaching Strategy
+
+Beginner-friendly flow:
+
+1. Explain the object before the code.
+2. Show dimensions and column names before analysis.
+3. Run one comparison first.
+4. Make a simple plot before customizing it.
+5. Interpret one result table before enrichment.
+6. Export outputs at the end.
+
+## Expected Outputs
+
+By the end, participants should have:
+
+- A VISTA object.
+- A validated differential expression analysis.
+- QC plots.
+- Volcano and MA plots.
+- Expression plots for selected genes.
+- Enrichment results and enrichment plots.
+- Exported result tables and figures.
+
+## Take-Home Message
+
+VISTA is useful because it brings structure to a workflow that can otherwise become fragmented.
+
+For beginners, it reduces the amount of manual wrangling.
+
+For experienced users, it improves consistency, reproducibility, and reporting.
+
+For AI-assisted work, it provides a stable analysis framework that can be checked and repeated.
+

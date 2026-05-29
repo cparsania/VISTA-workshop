@@ -621,14 +621,52 @@ saveRDS(vista, file = file.path("workshop_outputs", "airway_vista.rds"))
 
 ## 19. Exercises
 
-Try these after the main workflow runs.
+Try these after the main workflow runs. Start with the easy questions, then move to moderate and hard questions if you have time.
 
-1. Change `label_n` in the MA plot from 10 to 20.
-2. Make a PCA plot without sample labels.
-3. Select the top 5 downregulated genes and make a barplot.
-4. Change the expression heatmap to show summarized group means.
-5. Run MSigDB enrichment for downregulated genes.
-6. Export a volcano plot.
+### Easy Questions
+
+These questions focus on reading objects, changing simple arguments, and understanding the output.
+
+1. How many genes and samples are present in `count_data`?
+2. Which column in `sample_metadata` stores the sample names used by VISTA?
+3. How many samples are in each `dex` group?
+4. What is the name of the comparison stored in `comp_name`?
+5. How many genes are labelled `Up`, `Down`, and `Other` in `de_table$regulation`?
+6. Change `label_n` in the MA plot from 10 to 20. What changes in the plot?
+7. Make a PCA plot without sample labels by changing `label = TRUE` to `label = FALSE`.
+8. Change the point size in the PCA plot. Which value makes the plot easiest to read?
+9. Select the top 5 upregulated genes and print them.
+10. Select the top 5 downregulated genes and print them.
+
+### Moderate Questions
+
+These questions require modifying code and interpreting the result.
+
+1. Create a barplot for the top 5 downregulated genes using `get_expression_barplot()`.
+2. Create a boxplot for the top 5 upregulated genes using `get_expression_boxplot()`.
+3. Change the expression heatmap so that it summarizes replicate groups instead of showing every sample.
+4. Make the expression heatmap using only the top 10 upregulated genes.
+5. Change the MA plot so that no genes are labelled. Which argument controls this?
+6. Run MSigDB enrichment for downregulated genes instead of upregulated genes.
+7. Make an enrichment plot for the downregulated MSigDB result.
+8. Export the DE result table using a new filename, such as `vista_de_results_updated.csv`.
+9. Save a PCA plot as a PNG file using `save_vista_plot()`.
+10. Compare the PCA and MDS plots. Do the samples group in a similar way?
+
+### Hard Questions
+
+These questions are designed for deeper thinking, troubleshooting, and extending the workflow.
+
+1. Change the differential expression cutoff in `create_vista()` from `log2fc_cutoff = 1` to `log2fc_cutoff = 0.5`. How does the number of Up and Down genes change?
+2. Change `pval_cutoff = 0.05` to `pval_cutoff = 0.01`. How does this affect the DEG summary?
+3. Re-run the workflow using `method = "edger"` instead of `method = "deseq2"`. Are the top genes similar?
+4. Add `cell` as a covariate in `create_vista()` using `covariates = c("cell")`. How does this change the results?
+5. Try `method = "both"` and inspect the available DE result sources. What is the difference between using `deseq2`, `edger`, and `consensus` results?
+6. Use `set_de_source()` to switch the active DE source if you created a multi-method VISTA object.
+7. Run GO enrichment for downregulated genes and compare the top terms with the upregulated GO results.
+8. Use `get_pathway_genes()` to extract genes from the top enriched pathway. Then make an expression heatmap for those genes.
+9. Create a small report of your top biological interpretation: one sentence about the comparison, one sentence about the strongest DE genes, and one sentence about the top enriched pathway.
+10. Think about reproducibility: which files would you save or share so someone else can repeat your analysis?
 
 ## 20. Key Takeaways
 
