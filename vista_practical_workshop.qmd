@@ -1,0 +1,646 @@
+---
+title: "VISTA Practical Workshop"
+subtitle: "Hands-on RNA-seq workflow using VISTA example data"
+author: "VISTA workshop"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: false
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Learning Objectives
+
+By the end of this practical you should be able to:
+
+- Load VISTA and its example RNA-seq data.
+- Inspect count data and sample metadata.
+- Prepare counts and metadata for VISTA.
+- Create and validate a VISTA object.
+- Understand where normalized expression, sample metadata, gene metadata, and DE results are stored.
+- Make QC, differential expression, and expression plots.
+- Run functional enrichment after checking DE results.
+- Export tables and plots.
+
+## Setup
+
+Run this chunk first.
+
+```{r setup}
+library(VISTA)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+```
+
+Some later sections use optional Bioconductor packages. This helper lets us skip a section cleanly if a package is not installed.
+
+```{r helper-functions}
+has_pkg <- function(pkg) {
+  requireNamespace(pkg, quietly = TRUE)
+}
+```
+
+## 1. Load the Example Data
+
+VISTA includes two example datasets:
+
+- `count_data`: RNA-seq counts.
+- `sample_metadata`: sample-level information.
+
+```{r load-example-data}
+data(count_data, package = "VISTA")
+data(sample_metadata, package = "VISTA")
+```
+
+Inspect the size of each object.
+
+```{r inspect-dimensions}
+dim(count_data)
+dim(sample_metadata)
+```
+
+Preview the first few rows.
+
+```{r preview-data}
+head(count_data[, 1:5])
+head(sample_metadata)
+```
+
+## 2. Understand the Inputs
+
+The count table has one row per gene and one column per sample, plus a `gene_id` column.
+
+```{r count-columns}
+colnames(count_data)
+```
+
+The metadata has one row per sample. The `sample_names` column should match the count columns.
+
+```{r metadata-columns}
+names(sample_metadata)
+sample_metadata$sample_names
+```
+
+Check the treatment column.
+
+```{r treatment-summary}
+table(sample_metadata$dex)
+```
+
+For this workshop, we compare:
+
+- numerator: `trt`
+- denominator: `untrt`
+- group column: `dex`
+
+In plain language: treated samples compared with untreated samples.
+
+## 3. Prepare Counts and Metadata
+
+VISTA provides helper functions to standardize inputs before analysis.
+
+```{r prepare-counts}
+prepared_counts <- read_vista_counts(
+  count_data,
+  format = "matrix",
+  gene_id_column = "gene_id"
+)
+```
+
+```{r prepare-metadata}
+prepared_metadata <- read_vista_metadata(
+  sample_metadata,
+  sample_column = "sample_names"
+)
+```
+
+Now match counts and metadata. This is one of the most important checks in RNA-seq analysis.
+
+```{r match-inputs}
+matched_inputs <- match_vista_inputs(
+  counts = prepared_counts,
+  sample_info = prepared_metadata,
+  column_geneid = "gene_id",
+  sample_column = "sample_names"
+)
+```
+
+Inspect the matched output.
+
+```{r inspect-matched-inputs}
+names(matched_inputs)
+dim(matched_inputs$counts)
+dim(matched_inputs$sample_info)
+matched_inputs$sample_info[, c("sample_names", "dex", "cell")]
+```
+
+## 4. Create a VISTA Object
+
+Now we run differential expression and create a VISTA object.
+
+For beginners, focus on these arguments:
+
+- `counts`: the gene count table.
+- `sample_info`: the sample metadata.
+- `column_geneid`: the gene ID column.
+- `group_column`: the metadata column defining groups.
+- `group_numerator`: the group in the numerator of the fold change.
+- `group_denominator`: the reference group.
+- `method`: the differential expression backend.
+
+```{r create-vista}
+vista <- create_vista(
+  counts = matched_inputs$counts,
+  sample_info = matched_inputs$sample_info,
+  column_geneid = matched_inputs$column_geneid,
+  group_column = "dex",
+  group_numerator = "trt",
+  group_denominator = "untrt",
+  method = "deseq2",
+  min_counts = 10,
+  min_replicates = 2,
+  log2fc_cutoff = 1,
+  pval_cutoff = 0.05,
+  p_value_type = "padj"
+)
+```
+
+Print the object.
+
+```{r print-vista}
+vista
+```
+
+## 5. Validate the Object
+
+Validation checks whether the VISTA object is internally consistent.
+
+```{r validate-vista}
+validate_vista(vista, level = "full")
+```
+
+## 6. Why the VISTA Object Matters
+
+A VISTA object keeps several parts of the analysis together:
+
+- normalized expression values,
+- sample metadata,
+- gene metadata,
+- differential expression results,
+- analysis cutoffs,
+- color settings and plotting information.
+
+This follows the same logic as Bioconductor's `SummarizedExperiment`: data and metadata should stay synchronized.
+
+Inspect key parts:
+
+```{r inspect-vista-parts}
+SummarizedExperiment::colData(vista) |> as.data.frame() |> head()
+SummarizedExperiment::rowData(vista) |> as.data.frame() |> head()
+names(comparisons(vista))
+deg_summary(vista)
+cutoffs(vista)
+```
+
+## 7. Add Gene Annotations
+
+The example data uses Ensembl gene IDs. For human-readable plots, gene symbols are useful.
+
+This step uses `org.Hs.eg.db`. If the package is not installed, skip this section and continue with Ensembl IDs.
+
+```{r annotate-genes}
+if (has_pkg("org.Hs.eg.db")) {
+  vista <- set_rowdata(
+    vista,
+    orgdb = org.Hs.eg.db::org.Hs.eg.db,
+    columns = c("SYMBOL", "GENENAME", "ENTREZID"),
+    keytype = "ENSEMBL"
+  )
+}
+
+SummarizedExperiment::rowData(vista) |> as.data.frame() |> head()
+```
+
+## 8. Explore Differential Expression Results
+
+Get the comparison name.
+
+```{r comparison-name}
+comp_name <- names(comparisons(vista))[1]
+comp_name
+```
+
+Extract the DE result table.
+
+```{r de-results}
+de_table <- comparisons(vista)[[comp_name]]
+head(de_table)
+```
+
+Count genes by regulation category.
+
+```{r regulation-counts}
+table(de_table$regulation)
+```
+
+Get the top upregulated and downregulated genes.
+
+```{r top-genes}
+top_up <- get_genes_by_regulation(
+  vista,
+  sample_comparisons = comp_name,
+  regulation = "Up",
+  top_n = 20
+)[[1]]
+
+top_down <- get_genes_by_regulation(
+  vista,
+  sample_comparisons = comp_name,
+  regulation = "Down",
+  top_n = 20
+)[[1]]
+
+top_up
+top_down
+```
+
+## 9. Quality Control Plots
+
+QC plots help us check whether samples behave as expected.
+
+### Sample Correlation Heatmap
+
+```{r corr-heatmap, fig.width=7, fig.height=6}
+get_corr_heatmap(
+  vista,
+  viridis_direction = -1,
+  show_corr_values = TRUE,
+  label_size = 3
+)
+```
+
+### PCA Plot
+
+```{r pca-plot, fig.width=7, fig.height=5}
+get_pca_plot(
+  vista,
+  label = TRUE,
+  shape_by = "cell"
+)
+```
+
+### MDS Plot
+
+```{r mds-plot, fig.width=7, fig.height=5}
+get_mds_plot(
+  vista,
+  label = TRUE,
+  shape_by = "cell"
+)
+```
+
+### UMAP Plot
+
+UMAP is optional and requires the `uwot` package.
+
+```{r umap-plot, fig.width=7, fig.height=5}
+if (has_pkg("uwot")) {
+  get_umap_plot(
+    vista,
+    label = TRUE,
+    shape_by = "cell"
+  )
+}
+```
+
+## 10. Differential Expression Plots
+
+### DEG Count Barplot
+
+```{r deg-count-barplot, fig.width=7, fig.height=5}
+get_deg_count_barplot(vista)
+```
+
+### Volcano Plot
+
+```{r volcano-plot, fig.width=8, fig.height=7}
+if (has_pkg("EnhancedVolcano")) {
+  get_volcano_plot(
+    vista,
+    sample_comparison = comp_name,
+    display_id = "SYMBOL"
+  )
+}
+```
+
+### MA Plot
+
+```{r ma-plot, fig.width=8, fig.height=6}
+get_ma_plot(
+  vista,
+  sample_comparison = comp_name,
+  label_n = 10,
+  display_id = "SYMBOL"
+)
+```
+
+## 11. Expression Plots for Selected Genes
+
+Expression plots help us inspect individual genes or sets of genes.
+
+```{r selected-genes}
+selected_genes <- head(top_up, 4)
+selected_genes
+```
+
+### Expression Heatmap
+
+```{r expression-heatmap, fig.width=8, fig.height=8}
+if (has_pkg("ComplexHeatmap")) {
+  get_expression_heatmap(
+    vista,
+    genes = c(head(top_up, 10), head(top_down, 10)),
+    sample_group = c("untrt", "trt"),
+    display_id = "SYMBOL",
+    show_row_names = TRUE,
+    summarise_replicates = FALSE,
+    annotate_columns = c("dex", "cell")
+  )
+}
+```
+
+### Barplot
+
+```{r expression-barplot, fig.width=9, fig.height=6}
+get_expression_barplot(
+  vista,
+  genes = selected_genes,
+  display_id = "SYMBOL",
+  log_transform = TRUE,
+  stats_group = TRUE
+) +
+  theme_minimal(base_size = 14)
+```
+
+### Boxplot
+
+```{r expression-boxplot, fig.width=9, fig.height=6}
+get_expression_boxplot(
+  vista,
+  genes = selected_genes,
+  display_id = "SYMBOL",
+  log_transform = TRUE,
+  facet_by = "gene",
+  stats_group = TRUE
+) +
+  theme_minimal(base_size = 14)
+```
+
+### Violin Plot
+
+```{r expression-violin, fig.width=9, fig.height=6}
+get_expression_violinplot(
+  vista,
+  genes = selected_genes,
+  display_id = "SYMBOL",
+  log_transform = TRUE,
+  facet_by = "gene"
+) +
+  theme_minimal(base_size = 14)
+```
+
+## 12. Fold-Change Analysis
+
+Extract a matrix of log2 fold changes.
+
+```{r foldchange-matrix}
+fc_matrix <- get_foldchange_matrix(vista)
+head(fc_matrix)
+```
+
+Plot fold changes for selected genes.
+
+```{r foldchange-heatmap, fig.width=7, fig.height=8}
+if (has_pkg("ComplexHeatmap")) {
+  get_foldchange_heatmap(
+    vista,
+    genes = c(head(top_up, 10), head(top_down, 10)),
+    display_id = "SYMBOL",
+    show_row_names = TRUE
+  )
+}
+```
+
+## 13. Before Functional Analysis
+
+Functional analysis should be run after checking the DE result table.
+
+Before running enrichment, confirm:
+
+- Which comparison is being used.
+- Which genes are Up, Down, or Other.
+- Which cutoffs define significant genes.
+- Which gene ID type is available.
+- Whether annotation packages are installed.
+
+```{r before-functional}
+comp_name
+cutoffs(vista)
+table(de_table$regulation)
+head(SummarizedExperiment::rowData(vista) |> as.data.frame())
+```
+
+For this dataset, our original gene IDs are Ensembl IDs. We therefore use `from_type = "ENSEMBL"` in enrichment functions.
+
+## 14. MSigDB Enrichment
+
+Run Hallmark enrichment for upregulated genes.
+
+```{r msigdb-enrichment}
+if (has_pkg("msigdbr") && has_pkg("clusterProfiler") && has_pkg("org.Hs.eg.db")) {
+  msig_up <- get_msigdb_enrichment(
+    vista,
+    sample_comparison = comp_name,
+    regulation = "Up",
+    msigdb_category = "H",
+    species = "Homo sapiens",
+    from_type = "ENSEMBL",
+    orgdb = org.Hs.eg.db::org.Hs.eg.db
+  )
+
+  head(msig_up$enrich@result)
+}
+```
+
+Plot the enrichment result.
+
+```{r msigdb-plot, fig.width=9, fig.height=6}
+if (exists("msig_up") && !is.null(msig_up$enrich) && nrow(msig_up$enrich@result) > 0) {
+  get_enrichment_plot(msig_up$enrich, top_n = 10)
+}
+```
+
+## 15. GO Enrichment
+
+Run Gene Ontology Biological Process enrichment.
+
+```{r go-enrichment}
+if (has_pkg("clusterProfiler") && has_pkg("org.Hs.eg.db")) {
+  go_bp <- get_go_enrichment(
+    vista,
+    sample_comparison = comp_name,
+    regulation = "Up",
+    ont = "BP",
+    species = "Homo sapiens",
+    from_type = "ENSEMBL",
+    orgdb = org.Hs.eg.db::org.Hs.eg.db
+  )
+
+  head(go_bp$enrich@result)
+}
+```
+
+```{r go-plot, fig.width=9, fig.height=6}
+if (exists("go_bp") && !is.null(go_bp$enrich) && nrow(go_bp$enrich@result) > 0) {
+  get_enrichment_plot(go_bp$enrich, top_n = 10)
+}
+```
+
+## 16. GSEA
+
+GSEA uses a ranked list of genes instead of only a significant-gene list.
+
+```{r gsea}
+if (has_pkg("msigdbr") && has_pkg("clusterProfiler") && has_pkg("org.Hs.eg.db")) {
+  gsea_h <- get_gsea(
+    vista,
+    sample_comparison = comp_name,
+    set_type = "msigdb",
+    from_type = "ENSEMBL",
+    species = "Homo sapiens",
+    msigdb_category = "H",
+    orgdb = org.Hs.eg.db::org.Hs.eg.db,
+    pvalueCutoff = 0.05
+  )
+
+  head(gsea_h$enrich@result)
+}
+```
+
+```{r gsea-plot, fig.width=9, fig.height=6}
+if (exists("gsea_h") && !is.null(gsea_h$enrich) && nrow(gsea_h$enrich@result) > 0) {
+  get_enrichment_plot(gsea_h$enrich, top_n = 10)
+}
+```
+
+## 17. Pathway-Specific Heatmap
+
+Use genes from enriched pathways and visualize their expression.
+
+```{r pathway-heatmap, fig.width=9, fig.height=8}
+if (exists("msig_up") &&
+    !is.null(msig_up$enrich) &&
+    nrow(msig_up$enrich@result) > 0 &&
+    has_pkg("ComplexHeatmap")) {
+
+  get_pathway_heatmap(
+    x = vista,
+    enrichment = msig_up$enrich,
+    sample_group = c("untrt", "trt"),
+    top_n = 2,
+    gene_mode = "union",
+    max_genes = 50,
+    value_transform = "zscore",
+    display_id = "SYMBOL",
+    annotate_columns = c("dex", "cell"),
+    summarise_replicates = FALSE,
+    show_row_names = FALSE
+  )
+}
+```
+
+## 18. Export Results
+
+Create an output directory.
+
+```{r create-output-dir}
+dir.create("workshop_outputs", showWarnings = FALSE)
+```
+
+Save the main DE result table.
+
+```{r save-de-results}
+save_vista_data(
+  vista,
+  what = "comparison",
+  sample_comparison = comp_name,
+  file = file.path("workshop_outputs", "vista_de_results.csv")
+)
+```
+
+Save a plot.
+
+```{r save-plot}
+p <- get_ma_plot(
+  vista,
+  sample_comparison = comp_name,
+  label_n = 10,
+  display_id = "SYMBOL"
+)
+
+save_vista_plot(
+  p,
+  file = file.path("workshop_outputs", "ma_plot.png"),
+  width = 8,
+  height = 6
+)
+```
+
+Export a bundle of standard assets.
+
+```{r export-assets, eval=FALSE}
+export_vista_assets(
+  vista,
+  out_dir = "workshop_outputs/vista_assets",
+  sample_comparison = comp_name,
+  display_id = "SYMBOL"
+)
+```
+
+Save the VISTA object for later.
+
+```{r save-vista-object}
+saveRDS(vista, file = file.path("workshop_outputs", "airway_vista.rds"))
+```
+
+## 19. Exercises
+
+Try these after the main workflow runs.
+
+1. Change `label_n` in the MA plot from 10 to 20.
+2. Make a PCA plot without sample labels.
+3. Select the top 5 downregulated genes and make a barplot.
+4. Change the expression heatmap to show summarized group means.
+5. Run MSigDB enrichment for downregulated genes.
+6. Export a volcano plot.
+
+## 20. Key Takeaways
+
+- Always inspect data before analysis.
+- Sample names in counts and metadata must match.
+- A VISTA object keeps expression, metadata, annotations, and results together.
+- QC plots should be checked before interpretation.
+- Functional analysis should be run after DE results and gene IDs are understood.
+- Exported tables and plots make the analysis easier to share and reproduce.
+
+## Session Information
+
+```{r session-info}
+sessionInfo()
+```
