@@ -1,0 +1,21 @@
+---
+title: "VISTA Workshop"
+subtitle: "Beginner-friendly RNA-seq analysis using VISTA example data"
+---
+
+This site hosts the practical material for the VISTA workshop.
+
+## Workshop Material
+
+- [VISTA practical workshop](vista_practical_workshop.html)
+
+## Local Rendering
+
+To rebuild the website locally:
+
+```bash
+quarto render
+```
+
+The rendered website is written to the `docs/` folder. GitHub Pages can serve that folder directly.
+

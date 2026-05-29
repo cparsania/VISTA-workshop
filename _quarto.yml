@@ -1,0 +1,23 @@
+project:
+  type: website
+  output-dir: docs
+  render:
+    - index.qmd
+    - vista_practical_workshop.qmd
+
+website:
+  title: "VISTA Workshop"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: vista_practical_workshop.qmd
+        text: Practical
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    number-sections: true
+
